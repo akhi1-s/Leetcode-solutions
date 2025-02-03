@@ -1,18 +1,32 @@
+#include <vector>
+#include <algorithm>
+using namespace std;
 
 class Solution {
 public:
-    bool PredictTheWinner(vector<int>& nums) {
+    bool predictTheWinner(vector<int>& nums) {
         int n = nums.size();
-        int f[n][n];
-        memset(f, 0, sizeof(f));
+        
+        // Create a DP table initialized to 0
+        vector<vector<int>> dp(n, vector<int>(n, 0));
+        
+        // Base case: single elements
         for (int i = 0; i < n; ++i) {
-            f[i][i] = nums[i];
+            dp[i][i] = nums[i];
         }
-        for (int i = n - 2; ~i; --i) {
-            for (int j = i + 1; j < n; ++j) {
-                f[i][j] = max(nums[i] - f[i + 1][j], nums[j] - f[i][j - 1]);
+        
+        // Fill the DP table for subarrays of increasing lengths
+        for (int length = 2; length <= n; ++length) {  // length of the subarray
+            for (int left = 0; left <= n - length; ++left) {
+                int right = left + length - 1;
+                
+                // Recurrence relation
+                dp[left][right] = max(nums[left] - dp[left + 1][right],
+                                      nums[right] - dp[left][right - 1]);
             }
         }
-        return f[0][n - 1] >= 0;
+        
+        // Player 1 wins if their score difference is non-negative
+        return dp[0][n - 1] >= 0;
     }
 };

@@ -1,35 +1,48 @@
+#include <vector>
+#include <queue>
+#include <algorithm>
+using namespace std;
 
-/**
- * Definition for a binary tree node.
- * struct TreeNode {
- *     int val;
- *     TreeNode *left;
- *     TreeNode *right;
- *     TreeNode() : val(0), left(nullptr), right(nullptr) {}
- *     TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
- *     TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
- * };
- */
 class Solution {
 public:
     long long kthLargestLevelSum(TreeNode* root, int k) {
-        vector<long long> arr;
-        function<void(TreeNode*, int)> dfs = [&](TreeNode* root, int d) {
-            if (!root) {
-                return;
+        // Edge case: if the tree is empty
+        if (!root) return -1;
+
+        // Vector to store the sum of each level
+        vector<long long> levelSums;
+
+        // Queue for BFS traversal
+        queue<TreeNode*> q;
+        q.push(root);
+
+        // Perform BFS to calculate level sums
+        while (!q.empty()) {
+            int size = q.size();
+            long long levelSum = 0;
+
+            // Process all nodes at the current level
+            for (int i = 0; i < size; ++i) {
+                TreeNode* node = q.front();
+                q.pop();
+                levelSum += node->val;
+
+                // Add child nodes to the queue
+                if (node->left) q.push(node->left);
+                if (node->right) q.push(node->right);
             }
-            if (arr.size() <= d) {
-                arr.push_back(0);
-            }
-            arr[d] += root->val;
-            dfs(root->left, d + 1);
-            dfs(root->right, d + 1);
-        };
-        dfs(root, 0);
-        if (arr.size() < k) {
-            return -1;
+
+            // Store the sum of the current level
+            levelSums.push_back(levelSum);
         }
-        sort(arr.rbegin(), arr.rend());
-        return arr[k - 1];
+
+        // If there are fewer than k levels, return -1
+        if (levelSums.size() < k) return -1;
+
+        // Sort the level sums in descending order
+        sort(levelSums.begin(), levelSums.end(), greater<long long>());
+
+        // Return the kth largest sum
+        return levelSums[k - 1];
     }
 };

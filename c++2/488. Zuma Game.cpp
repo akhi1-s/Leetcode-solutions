@@ -1,94 +1,66 @@
-#include <iostream>
-#include <queue>
-#include <map>
-#include <numeric>
-#include <unordered_set>
-
-using namespace std;
-
-
-/// DFS
-/// Time Complexity: O(n!)
-/// Space Complexity: O(n!)
 class Solution {
-
-private:
-    const map<char, int> char2num = {{'R', 0}, {'Y', 1}, {'B', 2}, {'G', 3}, {'W', 4}};
-
 public:
-    int findMinStep(string board_str, string hand_str){
-
-        string board = board_str;
-        for(int i = 0; i < board_str.size(); i ++) board[i] = ('0' + char2num.at(board_str[i]));
-
-        string hand_f(5, '0');
-        for(int i =0; i < hand_str.size(); i ++) hand_f[char2num.at(hand_str[i])] ++;
-
-        int res = INT_MAX;
-        unordered_set<string> visited;
-        dfs(board, hand_f, hand_str.size(), res, visited);
-        return res == INT_MAX ? -1 : res;
-    }
-
-
-private:
-    void dfs(const string& s, string& hand_f, const int handnum, int& res,
-             unordered_set<string>& visited){
-
-        string hash = s + "#" + hand_f;
-        if(visited.count(hash)) return;
-
-        if(s == ""){
-            int left = 0;
-            for(char c: hand_f) left += (c - '0');
-            res = min(res, handnum - left);
-            visited.insert(hash);
-            return;
-        }
-
-        for(int start = 0, i = start + 1; i <= s.size(); i ++)
-            if(i == s.size() || s[i] != s[start]){
-                if(i - start >= 3){
-                    dfs(s.substr(0, start) + s.substr(i), hand_f, handnum, res, visited);
-                    visited.insert(hash);
-                    return;
-                }
-                start = i;
-            }
-
-        for(int card = 0; card < hand_f.size(); card ++)
-            if(hand_f[card] > '0'){
-                string news;
-                for(int start = 0, i = 1; i <= s.size(); i ++)
-                    if(i == s.size() || s[i] != s[start]){
-                        if(card == s[start] - '0'){
-                            news = s.substr(0, i) + string(1, '0' + card) + s.substr(i);
-                            hand_f[card] --;
-                            dfs(news, hand_f, handnum, res, visited);
-                            hand_f[card] ++;
+    int findMinStep(string board, string hand) {
+		sort(hand.begin(), hand.end()); // sort the hand so balls of same colour come together
+        queue<string> bq; // queue for board
+        queue<string> hq; // queue for hand
+        queue<int> stepq; // queue for steps
+        unordered_set<string> visited; // visited set for caching
+        visited.insert(board + "#" + hand);
+        bq.push(board);
+        hq.push(hand);
+        stepq.push(0); // start at step 0
+        
+        while (!hq.empty()) {
+            string curBoard = bq.front();
+            bq.pop();
+            string curHand = hq.front();
+            hq.pop();
+            int curStep = stepq.front();
+            stepq.pop();
+			
+			// try inserting each ball from hand at each unique position on board 
+            for (int i = 0; i < curBoard.length(); i++) {
+                for (int j = 0; j < curHand.length(); j++) {
+				
+					// the two ifs below ensures that only unique possibilities are tested, see Note 1,2
+                    if (j > 0 && curHand[j] == curHand[j - 1]) continue;
+                    if (i > 0 && curBoard[i - 1] == curHand[j]) continue;
+					
+                    bool worthTrying = false;
+					
+					// the if, else block below tests if this combination is worth exploring, see Note 3,4
+                    if (curBoard[i] == curHand[j]) worthTrying = true;
+                    else if (0 < i && curBoard[i] == curBoard[i - 1]
+                      && curBoard[i] != curHand[j]) worthTrying = true;
+                    
+                    if (worthTrying) {
+                        string newBoard = updateBoard(curBoard.substr(0, i) + curHand[j] + curBoard.substr(i), i);
+                        if (newBoard == "") return curStep + 1;
+                        string newHand = curHand.substr(0, j) + curHand.substr(j + 1);
+                        if (visited.find(newBoard + "#" + newHand) == visited.end()) {
+                            bq.push(newBoard);
+                            hq.push(newHand);
+                            stepq.push(curStep + 1);
+                            visited.insert(newBoard + "#" + newHand);
                         }
-                        else{
-                            news = s.substr(0, start) + string(1, '0' + card) + s.substr(start);
-                            hand_f[card] --;
-                            dfs(news, hand_f, handnum, res, visited);
-                            hand_f[card] ++;
-
-                            news = s.substr(0, i) + string(1, '0' + card) + s.substr(i);
-                            hand_f[card] --;
-                            dfs(news, hand_f, handnum, res, visited);
-                            hand_f[card] ++;
-
-                            if(i - start > 1){
-                                news = s.substr(0, start + 1) + string(1, '0' + card) + s.substr(start + 1);
-                                hand_f[card] --;
-                                dfs(news, hand_f, handnum, res, visited);
-                                hand_f[card] ++;
-                            }
-                        }
-                        start = i;
                     }
+                }
             }
-
-        visited.insert(hash);
+        }
+        return -1;
+    }
+    
+    string updateBoard(string board, int idx) {
+        if (idx < 0) return board;
+        int left = idx, right = idx;
+        while (left > 0 && board[left] == board[left - 1]) left--;
+        while (right < board.length() && board[right] == board[right + 1]) right++;
+        
+        int sameClrLen = right - left + 1;
+        if (sameClrLen >= 3)
+            return updateBoard(board.substr(0, left) + board.substr(right + 1), left - 1);
+        else
+            return board;
     }
 };

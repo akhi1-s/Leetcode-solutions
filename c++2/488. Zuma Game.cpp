@@ -1,284 +1,94 @@
+#include <iostream>
+#include <queue>
+#include <map>
+#include <numeric>
+#include <unordered_set>
 
-// Time:  O((b+h)^2 * h!*(b+h-1)!/(b-1)!)
-// Space: O((b+h) * h!*(b+h-1)!/(b-1)!)
+using namespace std;
 
-// brute force solution with worse complexity but pass
+
+/// DFS
+/// Time Complexity: O(n!)
+/// Space Complexity: O(n!)
 class Solution {
-public:
-    int findMinStep(string board, string hand) {
-        unordered_map<string, unordered_map<string, int>> lookup;
-        int result = findMinStepHelper(board, hand, &lookup);
-        return result > hand.size() ? -1 : result;
-    }
 
 private:
-    int findMinStepHelper(const string& board, const string& hand,
-                          unordered_map<string, unordered_map<string, int>> *lookup) {
-        if (board.empty()) {
-            return 0;
-        }
-        if (hand.empty()) {
-            return MAX_STEP;
-        }
-        if ((*lookup)[board][hand]) {
-            return (*lookup)[board][hand];
-        }
+    const map<char, int> char2num = {{'R', 0}, {'Y', 1}, {'B', 2}, {'G', 3}, {'W', 4}};
 
-        int result = MAX_STEP;
-        for (int i = 0; i < hand.size(); ++i) {
-            for (int j = 0; j <= board.size(); ++j) {
-                const auto& next_board = shrink(board.substr(0, j) + hand.substr(i, 1) + board.substr(j));
-                const auto& next_hand = hand.substr(0, i) + hand.substr(i + 1);
-                result = min(result, findMinStepHelper(next_board, next_hand, lookup) + 1);
-            }
-        }
-        return (*lookup)[board][hand] = result;
-    }
-    
-    string shrink(string s) {  // Time: O(n^2), Space: O(1)
-        bool changed = true;
-        while (changed) {
-            changed = false;
-            for (int start = 0, i = 0; start < size(s); ++start) {
-                while(i < size(s) && s[start] == s[i]) {
-                    ++i;
-                }
-                if (i - start >= 3) {
-                    s = s.substr(0, start) + s.substr(i); 
-                    changed = true;
-                    break;
-                } 
-            }
-        }
-        return s;
-    }
-
-    static const int MAX_STEP = 6;
-};
-
-// Time:  O((b+h) * h!*(b+h-1)!/(b-1)!)
-// Space: O((b+h) * h!*(b+h-1)!/(b-1)!)
-// brute force solution
-class Solution_TLE {
 public:
-    int findMinStep(string board, string hand) {
-        unordered_map<string, unordered_map<string, int>> lookup;
-        int result = findMinStepHelper(board, hand, &lookup);
-        return result > hand.size() ? -1 : result;
+    int findMinStep(string board_str, string hand_str){
+
+        string board = board_str;
+        for(int i = 0; i < board_str.size(); i ++) board[i] = ('0' + char2num.at(board_str[i]));
+
+        string hand_f(5, '0');
+        for(int i =0; i < hand_str.size(); i ++) hand_f[char2num.at(hand_str[i])] ++;
+
+        int res = INT_MAX;
+        unordered_set<string> visited;
+        dfs(board, hand_f, hand_str.size(), res, visited);
+        return res == INT_MAX ? -1 : res;
     }
+
 
 private:
-    int findMinStepHelper(const string& board, const string& hand,
-                          unordered_map<string, unordered_map<string, int>> *lookup) {
-        if (board.empty()) {
-            return 0;
-        }
-        if (hand.empty()) {
-            return MAX_STEP;
-        }
-        if ((*lookup)[board][hand]) {
-            return (*lookup)[board][hand];
+    void dfs(const string& s, string& hand_f, const int handnum, int& res,
+             unordered_set<string>& visited){
+
+        string hash = s + "#" + hand_f;
+        if(visited.count(hash)) return;
+
+        if(s == ""){
+            int left = 0;
+            for(char c: hand_f) left += (c - '0');
+            res = min(res, handnum - left);
+            visited.insert(hash);
+            return;
         }
 
-        int result = MAX_STEP;
-        for (int i = 0; i < hand.size(); ++i) {
-            for (int j = 0; j <= board.size(); ++j) {
-                const auto& next_board = shrink(board.substr(0, j) + hand.substr(i, 1) + board.substr(j));
-                const auto& next_hand = hand.substr(0, i) + hand.substr(i + 1);
-                result = min(result, findMinStepHelper(next_board, next_hand, lookup) + 1);
-            }
-        }
-        return (*lookup)[board][hand] = result;
-    }
-    
-    string shrink(const string& s) {  // Time: O(n), Space: O(n)
-        vector<pair<char, int>> stack;
-        for (int i = 0, start = 0; i <= s.size(); ++i) {
-            if (i == s.size() || s[i] != s[start]) {
-                if (!stack.empty() && stack.back().first == s[start]) {
-                    stack.back().second += i - start;
-                    if (stack.back().second >= 3) {
-                        stack.pop_back();
-                    }
-                } else if (!s.empty() && i - start < 3) {
-                    stack.emplace_back(s[start], i - start);
+        for(int start = 0, i = start + 1; i <= s.size(); i ++)
+            if(i == s.size() || s[i] != s[start]){
+                if(i - start >= 3){
+                    dfs(s.substr(0, start) + s.substr(i), hand_f, handnum, res, visited);
+                    visited.insert(hash);
+                    return;
                 }
                 start = i;
             }
-        }
-        string result;
-        for (const auto& p : stack) {
-            result += string(p.second, p.first);
-        }
-        return result;
-    }
 
-    static const int MAX_STEP = 6;
-};
+        for(int card = 0; card < hand_f.size(); card ++)
+            if(hand_f[card] > '0'){
+                string news;
+                for(int start = 0, i = 1; i <= s.size(); i ++)
+                    if(i == s.size() || s[i] != s[start]){
+                        if(card == s[start] - '0'){
+                            news = s.substr(0, i) + string(1, '0' + card) + s.substr(i);
+                            hand_f[card] --;
+                            dfs(news, hand_f, handnum, res, visited);
+                            hand_f[card] ++;
+                        }
+                        else{
+                            news = s.substr(0, start) + string(1, '0' + card) + s.substr(start);
+                            hand_f[card] --;
+                            dfs(news, hand_f, handnum, res, visited);
+                            hand_f[card] ++;
 
-// Time:  O((b * h) * b * b! * h!)
-// Space: O(b * b! * h!)
-// greedy solution without proof (possibly incorrect) 
-class Solution_GREEDY_ACCEPT_BUT_NOT_PROVED {
-public:
-    int findMinStep(string board, string hand) {
-        unordered_map<string, unordered_map<string, int>> lookup;
-        sort(hand.begin(), hand.end()); 
-        int result = findMinStepHelper(board, hand, &lookup);
-        if (result == MAX_STEP) {
-            unordered_map<string, unordered_map<string, int>> lookup2;
-            result = findMinStepHelper2(board, hand, &lookup2);
-        }
-        return result > hand.size() ? -1 : result;
-    }
+                            news = s.substr(0, i) + string(1, '0' + card) + s.substr(i);
+                            hand_f[card] --;
+                            dfs(news, hand_f, handnum, res, visited);
+                            hand_f[card] ++;
 
-private:
-    int findMinStepHelper(const string& board, const string& hand,
-                          unordered_map<string, unordered_map<string, int>> *lookup) {
-        if (board.empty()) {
-            return 0;
-        }
-        if (hand.empty()) {
-            return MAX_STEP;
-        }
-        if ((*lookup)[board][hand]) {
-            return (*lookup)[board][hand];
-        }
-
-        int result = MAX_STEP;
-        for (int i = 0; i < hand.size(); ++i) {
-            int j = 0;
-            while (j < board.size()) {
-                int k = board.find(hand[i], j);
-                if (k == string::npos) {
-                    break;
-                }
-                if (k < board.size() - 1 && board[k] == board[k + 1]) {
-                    const auto& next_board = shrink(board.substr(0, k) + board.substr(k + 2));
-                    const auto& next_hand = hand.substr(0, i) + hand.substr(i + 1);
-                    result = min(result, findMinStepHelper(next_board, next_hand, lookup) + 1);
-                    ++k;
-                } else if (i > 0 && hand[i] == hand[i - 1]) {
-                    const auto& next_board = shrink(board.substr(0, k) + board.substr(k + 1));
-                    const auto& next_hand = hand.substr(0, i - 1) + hand.substr(i + 1);
-                    result = min(result, findMinStepHelper(next_board, next_hand, lookup) + 2);
-                }
-                j = k + 1;
-            }
-        }
-        return (*lookup)[board][hand] = result;
-    }
-
-    int findMinStepHelper2(const string& board, const string& hand,
-                          unordered_map<string, unordered_map<string, int>> *lookup) {
-        int result = MAX_STEP;
-        for (int i = 0; i < hand.size(); ++i) {
-            for (int j = 0; j <= board.size(); ++j) {
-                const auto& next_board = shrink(board.substr(0, j) + hand.substr(i, 1) + board.substr(j));
-                const auto& next_hand = hand.substr(0, i) + hand.substr(i + 1);
-                result = min(result, findMinStepHelper(next_board, next_hand, lookup) + 1);
-            }
-        }
-        return result;
-    }
-
-    string shrink(const string& s) {  // Time: O(n), Space: O(n)
-        vector<pair<char, int>> stack;
-        for (int i = 0, start = 0; i <= s.size(); ++i) {
-            if (i == s.size() || s[i] != s[start]) {
-                if (!stack.empty() && stack.back().first == s[start]) {
-                    stack.back().second += i - start;
-                    if (stack.back().second >= 3) {
-                        stack.pop_back();
+                            if(i - start > 1){
+                                news = s.substr(0, start + 1) + string(1, '0' + card) + s.substr(start + 1);
+                                hand_f[card] --;
+                                dfs(news, hand_f, handnum, res, visited);
+                                hand_f[card] ++;
+                            }
+                        }
+                        start = i;
                     }
-                } else if (!s.empty() && i - start < 3) {
-                    stack.emplace_back(s[start], i - start);
-                }
-                start = i;
             }
-        }
-        string result;
-        for (const auto& p : stack) {
-            result += string(p.second, p.first);
-        }
-        return result;
+
+        visited.insert(hash);
     }
-
-    static const int MAX_STEP = 6;
-};
-
-// Time:  O(b * b! * h!)
-// Space: O(b * b! * h!)
-// if a ball can be only inserted beside a ball with same color,
-// we can do by this solution
-class Solution_WRONG_GREEDY_AND_NOT_ACCEPT_NOW {
-public:
-    int findMinStep(string board, string hand) {
-        unordered_map<string, unordered_map<string, int>> lookup;
-        sort(hand.begin(), hand.end()); 
-        int result = findMinStepHelper(board, hand, &lookup);
-        return result > hand.size() ? -1 : result;
-    }
-
-private:
-    int findMinStepHelper(const string& board, const string& hand,
-                          unordered_map<string, unordered_map<string, int>> *lookup) {
-        if (board.empty()) {
-            return 0;
-        }
-        if (hand.empty()) {
-            return MAX_STEP;
-        }
-        if ((*lookup)[board][hand]) {
-            return (*lookup)[board][hand];
-        }
-
-        int result = MAX_STEP;
-        for (int i = 0; i < hand.size(); ++i) {
-            int j = 0;
-            while (j < board.size()) {
-                int k = board.find(hand[i], j);
-                if (k == string::npos) {
-                    break;
-                }
-                if (k < board.size() - 1 && board[k] == board[k + 1]) {
-                    const auto& next_board = shrink(board.substr(0, k) + board.substr(k + 2));
-                    const auto& next_hand = hand.substr(0, i) + hand.substr(i + 1);
-                    result = min(result, findMinStepHelper(next_board, next_hand, lookup) + 1);
-                    ++k;
-                } else if (i > 0 && hand[i] == hand[i - 1]) {
-                    const auto& next_board = shrink(board.substr(0, k) + board.substr(k + 1));
-                    const auto& next_hand = hand.substr(0, i - 1) + hand.substr(i + 1);
-                    result = min(result, findMinStepHelper(next_board, next_hand, lookup) + 2);
-                }
-                j = k + 1;
-            }
-        }
-
-        return (*lookup)[board][hand] = result;
-    }
-    
-    string shrink(const string& s) {  // Time: O(n), Space: O(n)
-        vector<pair<char, int>> stack;
-        for (int i = 0, start = 0; i <= s.size(); ++i) {
-            if (i == s.size() || s[i] != s[start]) {
-                if (!stack.empty() && stack.back().first == s[start]) {
-                    stack.back().second += i - start;
-                    if (stack.back().second >= 3) {
-                        stack.pop_back();
-                    }
-                } else if (!s.empty() && i - start < 3) {
-                    stack.emplace_back(s[start], i - start);
-                }
-                start = i;
-            }
-        }
-        string result;
-        for (const auto& p : stack) {
-            result += string(p.second, p.first);
-        }
-        return result;
-    }
-
-    static const int MAX_STEP = 6;
 };
